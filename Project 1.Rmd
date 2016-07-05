@@ -1,0 +1,98 @@
+---
+title: "Untitled"
+author: "Srikanth"
+date: "July 4, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Reproducible Research Assignment 1
+
+This is Project report for **Reproducible Research course** in Coursera.
+
+# Introduction
+This assignment makes use of data from a personal activity monitoring device. This device collects data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
+
+# Loading the data and the necessary pacakages for data analysis
+
+```{r cars}
+library(knitr)
+opts_chunk$set(echo= TRUE)
+data<-read.csv("activity.csv", header = TRUE)
+head(data)
+summary(data)
+data$date <- as.Date(data$date)
+library(dplyr)
+```
+
+# Total, mean and median on the number of steps taken per day
+
+```{r steps per day}
+library(ggplot2)
+tsteps<-tapply(data$steps, data$date, FUN= sum, na.rm= TRUE)
+qplot(tsteps, xlab=" Total steps taken each day")
+mean(tsteps, na.rm=TRUE)
+median(tsteps, na.rm=TRUE)
+```
+
+# Time series plot of the average number of steps taken
+To find the average daily activy pattern we aggregated the data on steps by the interval and took the mean. This was then plotted into a graph where the pattern is easily discernable. The maximum value, while easy to find on the graph, is found numerically and displayed.
+
+```{r time series}
+aggdata<- aggregate(steps~interval, data=data, mean, na.rm=TRUE)
+plot(aggdata$interval, aggdata$steps, type="l", main="Average Steps per Five Minute Interval",
+     xlab="Interval No.", ylab="steps")
+maxi<-max(aggdata$steps)
+```
+# Imputing missing values
+There are a lot of missing values in the data
+
+```{r impute}
+nrow(data[is.na(data),])
+```
+one of the strategy is to fill the missing values with the average number of steps in the same 5 minute interval
+
+```{r}
+data_full <- data
+nas <- is.na(data_full$steps)
+avg_interval <- tapply(data_full$steps, data_full$interval, mean, na.rm=TRUE, simplify=TRUE)
+data_full$steps[nas] <- avg_interval[as.character(data_full$interval[nas])]
+sum(is.na(data_full$steps))
+```
+
+With the new data set after filling the missing values, the sum, mean and median is recalculated.
+
+```{r }
+library(ggplot2)
+newtsteps<-tapply(data_full$steps, data_full$date, FUN= sum, na.rm=TRUE)
+qplot(newtsteps, xlab=" Total steps taken each day")
+mean(newtsteps, na.rm=TRUE)
+median(newtsteps, na.rm=TRUE)
+```
+
+# Difference in activity patterns between weekdays and weekends
+
+First step is to tag each day as a weekday or a weekend.
+
+```{r}
+data_full$day <- weekdays(as.Date(data_full$date))
+data_full$dateTime<- as.POSIXct(data_full$date, format="%Y-%m-%d")
+data_full$daycategory <- ifelse(data_full$day %in% c("Saturday", "Sunday"), "Weekend", "Weekday")
+```
+
+Next step is to plot two charts for a weekday and a weekend.
+```{r}
+library(plyr)
+library(lattice)
+aggdata2 <- ddply(data_full, .(interval, daycategory), summarize, Avg = mean(steps))
+##Plot data in a panel plot
+xyplot(Avg~interval|daycategory, data=aggdata2, type="l",  layout = c(1,2),
+       main="Average Steps per Interval Based on Type of Day", 
+       ylab="Average Number of Steps", xlab="Interval")
+```
+
+
+
